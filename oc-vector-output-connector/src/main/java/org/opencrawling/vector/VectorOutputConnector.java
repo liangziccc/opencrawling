@@ -20,6 +20,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Primary;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.opencrawling.core.connector.OutputConnector;
@@ -44,8 +45,8 @@ public class VectorOutputConnector implements OutputConnector {
     private final TokenTextSplitter textSplitter;
     private final Tika tika;
 
-    public VectorOutputConnector(VectorStore vectorStore) {
-        this.vectorStore = vectorStore;
+    public VectorOutputConnector(@Qualifier("directIngestVectorStore") VectorStore directIngestVectorStore) {
+        this.vectorStore = directIngestVectorStore;
         this.textSplitter = TokenTextSplitter.builder().build();
         this.tika = new Tika();
     }

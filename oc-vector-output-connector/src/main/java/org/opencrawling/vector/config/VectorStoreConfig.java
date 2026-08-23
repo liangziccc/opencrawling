@@ -16,6 +16,9 @@
 package org.opencrawling.vector.config;
 
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.ollama.OllamaEmbeddingModel;
+import org.springframework.ai.ollama.api.OllamaApi;
+import org.springframework.ai.ollama.api.OllamaEmbeddingOptions;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -48,6 +51,12 @@ public class VectorStoreConfig {
 
     @Value("${spring.ai.vectorstore.pgvector.dimensions:1536}")
     private int dimensions;
+
+    @Value("${spring.ai.ollama.base-url:http://127.0.0.1:11434}")
+    private String ollamaBaseUrl;
+
+    @Value("${spring.ai.ollama.embedding.options.model:mxbai-embed-large}")
+    private String embeddingModelName;
 
     @Bean
     public DataSource pgVectorDataSource() {
@@ -103,6 +112,20 @@ public class VectorStoreConfig {
                 .vectorTableName("vector_store_1024")
                 .dimensions(1024)
                 .initializeSchema(initializeSchema)
+                .build();
+    }
+
+    @Bean
+    public PgVectorStore directIngestVectorStore(JdbcTemplate pgVectorJdbcTemplate) {
+        OllamaApi ollamaApi = OllamaApi.builder().baseUrl(ollamaBaseUrl).build();
+        OllamaEmbeddingModel ollamaEmbeddingModel = OllamaEmbeddingModel.builder()
+                .ollamaApi(ollamaApi)
+                .options(OllamaEmbeddingOptions.builder().model(embeddingModelName).build())
+                .build();
+        return PgVectorStore.builder(pgVectorJdbcTemplate, ollamaEmbeddingModel)
+                .vectorTableName("vector_store")
+                .dimensions(dimensions)
+                .initializeSchema(false)
                 .build();
     }
 }
