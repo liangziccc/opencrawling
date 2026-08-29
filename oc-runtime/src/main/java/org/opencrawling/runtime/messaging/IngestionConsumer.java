@@ -174,7 +174,9 @@ public class IngestionConsumer {
                         chunk.getMetadata(),
                         message.transformationConnector(),
                         message.transformationEngine(),
-                        message.transformationConfig()
+                        message.transformationConfig(),
+                        message.outputConnector(),
+                        message.outputConfig()
                     );
                     kafkaTemplate.send(KafkaConfig.CHUNKS_TOPIC_NAME, chunkId, chunkMsg).get();
                 }

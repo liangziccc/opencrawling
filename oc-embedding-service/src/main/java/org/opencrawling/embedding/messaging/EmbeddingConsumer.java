@@ -58,7 +58,9 @@ public class EmbeddingConsumer {
                 message.chunkId(),
                 message.text(),
                 message.metadata(),
-                embedding
+                embedding,
+                message.outputConnector(),
+                message.outputConfig()
             );
 
             // Publish to embedded topic

@@ -24,5 +24,19 @@ public record DocumentChunkMessage(
     Map<String, Object> metadata,
     String transformationConnector,
     String transformationEngine,
-    Map<String, String> transformationConfig
-) {}
+    Map<String, String> transformationConfig,
+    String outputConnector,
+    Map<String, String> outputConfig
+) {
+    public DocumentChunkMessage(
+        String documentId,
+        String chunkId,
+        String text,
+        Map<String, Object> metadata,
+        String transformationConnector,
+        String transformationEngine,
+        Map<String, String> transformationConfig
+    ) {
+        this(documentId, chunkId, text, metadata, transformationConnector, transformationEngine, transformationConfig, null, null);
+    }
+}

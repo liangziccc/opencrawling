@@ -32,8 +32,24 @@ public record IngestionMessage(
     String lastModified,
     String transformationConnector,
     String transformationEngine,
-    Map<String, String> transformationConfig
+    Map<String, String> transformationConfig,
+    String outputConnector,
+    Map<String, String> outputConfig
 ) {
+    public IngestionMessage(
+        String documentId,
+        String uri,
+        Map<String, List<String>> metadata,
+        String acl,
+        SecurityConfig security,
+        String lastModified,
+        String transformationConnector,
+        String transformationEngine,
+        Map<String, String> transformationConfig
+    ) {
+        this(documentId, uri, metadata, acl, security, lastModified, transformationConnector, transformationEngine, transformationConfig, null, null);
+    }
+
     public IngestionMessage(
         String documentId,
         String uri,
@@ -44,6 +60,6 @@ public record IngestionMessage(
         String transformationEngine,
         Map<String, String> transformationConfig
     ) {
-        this(documentId, uri, metadata, acl, SecurityConfig.createPublic(), lastModified, transformationConnector, transformationEngine, transformationConfig);
+        this(documentId, uri, metadata, acl, SecurityConfig.createPublic(), lastModified, transformationConnector, transformationEngine, transformationConfig, null, null);
     }
 }

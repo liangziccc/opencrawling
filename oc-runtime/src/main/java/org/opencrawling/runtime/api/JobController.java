@@ -43,17 +43,20 @@ public class JobController {
     private final FileSystemRepositoryConnector fileSystemRepositoryConnector;
     private final OutputConnector outputConnector;
     private final JdbcTemplate jdbcTemplate;
+    private final org.springframework.ai.embedding.EmbeddingModel ollamaEmbeddingModel;
 
     @Autowired
     public JobController(
             JobOrchestrator jobOrchestrator,
             FileSystemRepositoryConnector fileSystemRepositoryConnector,
             OutputConnector outputConnector,
-            JdbcTemplate jdbcTemplate) {
+            JdbcTemplate jdbcTemplate,
+            @Autowired(required = false) @org.springframework.beans.factory.annotation.Qualifier("ollamaEmbeddingModel") org.springframework.ai.embedding.EmbeddingModel ollamaEmbeddingModel) {
         this.jobOrchestrator = jobOrchestrator;
         this.fileSystemRepositoryConnector = fileSystemRepositoryConnector;
         this.outputConnector = outputConnector;
         this.jdbcTemplate = jdbcTemplate;
+        this.ollamaEmbeddingModel = ollamaEmbeddingModel;
         
         // Initial defaults
         List<JobDTO> defaults = new ArrayList<>();
@@ -152,6 +155,7 @@ public class JobController {
             log.info("Found activeJob: {} [path: {}, outputConnector: {}]", activeJob.name(), activeJob.path(), activeJob.outputConnector());
             RepositoryConnector resolvedConnector = null;
             OutputConnector resolvedOutputConnector = null;
+            final ConnectorController.ConnectorDTO[] outputConfigRef = new ConnectorController.ConnectorDTO[1];
             try {
                 List<ConnectorController.ConnectorDTO> connectors = 
                     PersistenceHelper.loadList("connectors.json", ConnectorController.ConnectorDTO.class, List.of());
@@ -183,14 +187,15 @@ public class JobController {
                     }
                 }
 
-                // 2. Output Connector Resolution
-                ConnectorController.ConnectorDTO outConfig = connectors.stream()
-                    .filter(c -> c.name().equalsIgnoreCase(activeJob.outputConnector()) || (c.type() != null && c.type().equalsIgnoreCase("output") && c.name().equalsIgnoreCase(activeJob.outputConnector())))
-                    .findFirst()
-                    .orElse(null);
+            // 2. Output Connector Resolution
+            ConnectorController.ConnectorDTO outConfig = connectors.stream()
+                .filter(c -> c.name().equalsIgnoreCase(activeJob.outputConnector()) || (c.type() != null && c.type().equalsIgnoreCase("output") && c.name().equalsIgnoreCase(activeJob.outputConnector())))
+                .findFirst()
+                .orElse(null);
+            outputConfigRef[0] = outConfig;
 
-                if (outConfig != null) {
-                    String cls = outConfig.className();
+                    if (outConfig != null) {
+                        String cls = outConfig.className();
                     if (cls.contains("Qdrant")) {
                         String host = outConfig.configuration().getOrDefault("qdrantHost", "localhost");
                         int grpcPort = 6334;
@@ -259,6 +264,24 @@ public class JobController {
                         org.opencrawling.vespa.VespaDocumentMapper vespaMapper = new org.opencrawling.vespa.VespaDocumentMapper();
                         resolvedOutputConnector = new org.opencrawling.vespa.VespaOutputConnector(feedClient, vespaProps, vespaMapper, null);
                         log.info("Successfully resolved dynamic Vespa output connector at endpoint '{}'", endpoint);
+                    } else if (cls.contains("elasticsearch.ElasticsearchOutputConnector")) {
+                        String esUris = outConfig.configuration().getOrDefault("elasticsearchUris", "http://localhost:9200");
+                        String esIndex = outConfig.configuration().getOrDefault("elasticsearchIndexName", "enterprise_kb");
+                        String esUsername = outConfig.configuration().getOrDefault("elasticsearchUsername", "");
+                        String esPassword = outConfig.configuration().getOrDefault("elasticsearchPassword", "");
+                        String esApiKey = outConfig.configuration().getOrDefault("elasticsearchApiKey", "");
+                        int esDimensions = 1024;
+                        try {
+                            esDimensions = Integer.parseInt(outConfig.configuration().getOrDefault("elasticsearchDimensions", "1024"));
+                        } catch (Exception ignored) {}
+                        String esSimilarity = outConfig.configuration().getOrDefault("elasticsearchSimilarity", "cosine");
+                        String esIndexType = outConfig.configuration().getOrDefault("elasticsearchIndexType", "hnsw");
+
+                        resolvedOutputConnector = new org.opencrawling.elasticsearch.ElasticsearchOutputConnector(
+                                null, ollamaEmbeddingModel,
+                                esUris, esIndex, esUsername, esPassword, esApiKey,
+                                esDimensions, esSimilarity, esIndexType);
+                        log.info("Successfully resolved dynamic Elasticsearch output connector for index '{}' at {}", esIndex, esUris);
                     }
                 }
             } catch (Exception e) {
@@ -278,11 +301,16 @@ public class JobController {
 
             log.info("Launching background Virtual Thread for job {} with OutputConnector: {}", id, finalOutputConnector.getName());
             
+            final ConnectorController.ConnectorDTO finalOutConfig = outputConfigRef[0];
+
             // Execute real crawler inside virtual thread
             Thread.ofVirtual().start(() -> {
                 try {
                     log.info("Background Virtual Thread running. Path: {}, OutputConnector: {}", finalActiveJob.path(), finalOutputConnector.getName());
-                    jobOrchestrator.runJob(finalConnector, finalOutputConnector, finalActiveJob.path(), finalActiveJob.transformationConnector(), finalActiveJob.id(), finalActiveJob.narrativization());
+                    jobOrchestrator.runJob(finalConnector, finalOutputConnector, finalActiveJob.path(),
+                            finalActiveJob.transformationConnector(), finalActiveJob.id(), finalActiveJob.narrativization(),
+                            finalOutConfig != null ? finalOutConfig.name() : null,
+                            finalOutConfig != null ? finalOutConfig.configuration() : null);
                     log.info("Background Virtual Thread completed successfully!");
                     // update status to completed when done, and pull actual db document count
                     updateJobStatusAndStage(id, "Finished", "Completed", getActualDbDocCount());

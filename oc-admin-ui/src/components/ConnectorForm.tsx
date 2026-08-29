@@ -38,6 +38,7 @@ import {
 import { useState, useEffect } from 'react'
 import { connectorApi } from '../lib/api'
 import VespaModelInsights from './VespaModelInsights'
+import ElasticsearchInsights from './ElasticsearchInsights'
 
 type ConnectorType = 'repository' | 'output' | 'authority' | 'transformation'
 
@@ -122,6 +123,8 @@ export default function ConnectorForm() {
   // Map<String,String>), so a plain truthy check would treat the string "false" as checked/true.
   const vespaTlsEnabledBool = vespaTlsEnabled === true || vespaTlsEnabled === 'true'
   const vespaEndpointValue = watch('configuration.vespaEndpoint')
+  const esUrisValue = watch('configuration.elasticsearchUris')
+  const esIndexNameValue = watch('configuration.elasticsearchIndexName')
 
   const fetchConnectors = async () => {
     setIsLoading(true)
@@ -223,6 +226,7 @@ export default function ConnectorForm() {
       { label: 'Qdrant Vector Store', value: 'org.opencrawling.qdrant.QdrantOutputConnector' },
       { label: 'OpenSearch 2.x Output Connector', value: 'org.opencrawling.opensearch2.OpenSearch2OutputConnector' },
       { label: 'OpenSearch 3.x Output Connector', value: 'org.opencrawling.opensearch3.OpenSearch3OutputConnector' },
+      { label: 'Elasticsearch Output Connector', value: 'org.opencrawling.elasticsearch.ElasticsearchOutputConnector' },
       { label: 'Vespa Hybrid Search Store', value: 'org.opencrawling.vespa.VespaOutputConnector' },
     ],
     authority: [
@@ -838,6 +842,103 @@ export default function ConnectorForm() {
                     </div>
                   )}
 
+                  {/* Elasticsearch Vector Store */}
+                  {selectedClass === 'org.opencrawling.elasticsearch.ElasticsearchOutputConnector' && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Elasticsearch URIs</label>
+                          <input
+                            {...register('configuration.elasticsearchUris')}
+                            placeholder="http://localhost:9200"
+                            defaultValue="http://localhost:9200"
+                            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none font-mono"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Index Name</label>
+                          <input
+                            {...register('configuration.elasticsearchIndexName')}
+                            placeholder="enterprise_kb"
+                            defaultValue="enterprise_kb"
+                            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Username</label>
+                          <input
+                            {...register('configuration.elasticsearchUsername')}
+                            placeholder="(optional)"
+                            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Password</label>
+                          <input
+                            type="password"
+                            {...register('configuration.elasticsearchPassword')}
+                            placeholder="(optional)"
+                            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">API Key</label>
+                          <input
+                            type="password"
+                            {...register('configuration.elasticsearchApiKey')}
+                            placeholder="(optional, overrides basic auth)"
+                            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Dimensions</label>
+                          <input
+                            type="number"
+                            {...register('configuration.elasticsearchDimensions', { valueAsNumber: true })}
+                            placeholder="1024"
+                            defaultValue={1024}
+                            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none font-mono"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Similarity</label>
+                          <select
+                            {...register('configuration.elasticsearchSimilarity')}
+                            defaultValue="cosine"
+                            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                          >
+                            <option value="cosine">COSINE (Default)</option>
+                            <option value="dot_product">DOT_PRODUCT</option>
+                            <option value="l2_norm">L2_NORM</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Index Type</label>
+                          <select
+                            {...register('configuration.elasticsearchIndexType')}
+                            defaultValue="hnsw"
+                            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                          >
+                            <option value="hnsw">HNSW (Recommended)</option>
+                            <option value="int8_hnsw">INT8_HNSW (Quantized)</option>
+                            <option value="flat">FLAT (Exact)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <ElasticsearchInsights
+                        uris={(esUrisValue as string) || 'http://localhost:9200'}
+                        indexName={(esIndexNameValue as string) || 'enterprise_kb'}
+                      />
+                    </div>
+                  )}
+
                   {/* Qdrant Vector Store */}
                   {selectedClass === 'org.opencrawling.qdrant.QdrantOutputConnector' && (
                     <div className="space-y-4">
@@ -1158,27 +1259,7 @@ export default function ConnectorForm() {
                     </div>
                   )}
 
-                  {/* Elasticsearch */}
-                  {selectedClass === 'org.opencrawling.agents.output.elasticsearch.ElasticsearchConnector' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Elasticsearch Hosts (Comma-separated)</label>
-                        <input 
-                          {...register('configuration.esHosts', { required: true })}
-                          placeholder="http://localhost:9200"
-                          className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none font-mono"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Index Name</label>
-                        <input 
-                          {...register('configuration.esIndex', { required: true })}
-                          placeholder="opencrawling-vectors"
-                          className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"
-                        />
-                      </div>
-                    </div>
-                  )}
+                  {/* Elasticsearch (dead placeholder removed - real implementation registered above) */}
 
                   {/* Apache Solr */}
                   {selectedClass === 'org.opencrawling.agents.output.solr.SolrConnector' && (

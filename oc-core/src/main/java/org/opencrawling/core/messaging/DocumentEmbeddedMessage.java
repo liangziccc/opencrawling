@@ -22,5 +22,17 @@ public record DocumentEmbeddedMessage(
     String chunkId,
     String text,
     Map<String, Object> metadata,
-    float[] embedding
-) {}
+    float[] embedding,
+    String outputConnector,
+    Map<String, String> outputConfig
+) {
+    public DocumentEmbeddedMessage(
+        String documentId,
+        String chunkId,
+        String text,
+        Map<String, Object> metadata,
+        float[] embedding
+    ) {
+        this(documentId, chunkId, text, metadata, embedding, null, null);
+    }
+}

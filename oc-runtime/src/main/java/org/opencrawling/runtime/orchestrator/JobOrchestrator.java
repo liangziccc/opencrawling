@@ -80,6 +80,13 @@ public class JobOrchestrator {
     @SuppressWarnings("preview")
     public void runJob(RepositoryConnector repositoryConnector, OutputConnector outputConnector, String path,
             String transformationConnector, String jobId, NarrativizationConfig narrativization) {
+        runJob(repositoryConnector, outputConnector, path, transformationConnector, jobId, narrativization, null, null);
+    }
+
+    @SuppressWarnings("preview")
+    public void runJob(RepositoryConnector repositoryConnector, OutputConnector outputConnector, String path,
+            String transformationConnector, String jobId, NarrativizationConfig narrativization,
+            String outputConnectorName, Map<String, String> outputConfig) {
         
         final MustacheTransformationConnector mustacheConnector =
             (narrativization != null && narrativization.enabled() &&
@@ -92,12 +99,14 @@ public class JobOrchestrator {
                 narrativization.template().substring(0, Math.min(60, narrativization.template().length())));
         }
 
-        runJobInternal(repositoryConnector, outputConnector, path, transformationConnector, jobId, mustacheConnector);
+        runJobInternal(repositoryConnector, outputConnector, path, transformationConnector, jobId, mustacheConnector,
+                outputConnectorName, outputConfig);
     }
 
     @SuppressWarnings("preview")
     private void runJobInternal(RepositoryConnector repositoryConnector, OutputConnector outputConnector, String path,
-            String transformationConnector, String jobId, MustacheTransformationConnector mustacheConnector) {
+            String transformationConnector, String jobId, MustacheTransformationConnector mustacheConnector,
+            String outputConnectorName, Map<String, String> outputConfig) {
         log.info("Starting job {} for path: {} with transformation connector: {}", jobId, path, transformationConnector);
         long startTime = System.currentTimeMillis();
         String traceId = UUID.randomUUID().toString().substring(0, 8);
@@ -124,6 +133,8 @@ public class JobOrchestrator {
 
         final String finalEngine = engine;
         final java.util.Map<String, String> finalConfig = config;
+        final String finalOutputConnectorName = outputConnectorName;
+        final java.util.Map<String, String> finalOutputConfig = outputConfig;
 
         try (var scope = StructuredTaskScope.open()) {
             
@@ -179,7 +190,9 @@ public class JobOrchestrator {
                                 doc.lastModified().toString(),
                                 transformationConnector,
                                 finalEngine,
-                                finalConfig
+                                finalConfig,
+                                finalOutputConnectorName,
+                                finalOutputConfig
                             );
                             
                             // Publish document metadata to Kafka topic and wait for confirmation

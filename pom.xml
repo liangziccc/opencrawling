@@ -102,6 +102,7 @@
         <module>oc-opensearch2-output-connector</module>
         <module>oc-opensearch3-output-connector</module>
         <module>oc-vespa-output-connector</module>
+        <module>oc-elasticsearch-output-connector</module>
         <module>oc-flowable-repository-connector</module>
         <module>oc-camunda-repository-connector</module>
         <module>oc-connector-archetypes</module>
@@ -144,6 +145,17 @@
              that merely depend on it (oc-runtime, and by extension every Docker image built from it) -
              each of those needs this same pin to resolve Jetty correctly on its own classpath. -->
         <jetty-vespa.version>12.0.36</jetty-vespa.version>
+
+        <!-- Elasticsearch 8.x client line oc-elasticsearch-output-connector is built against.
+             spring-boot-dependencies manages a newer elasticsearch-java (9.x) that switched to the
+             rest5 transport (co.elastic.clients:elasticsearch-rest5-client) and no longer carries
+             org.elasticsearch.client.RestClient, which breaks the connector's wiring with a
+             NoClassDefFoundError unless pinned here. Declared at the reactor root, not just in
+             oc-elasticsearch-output-connector's own pom, because dependencyManagement doesn't
+             propagate to modules that merely depend on it (oc-runtime, and by extension every
+             Docker image built from it) - each of those needs this same pin to resolve the
+             Elasticsearch client correctly on its own classpath. -->
+        <elasticsearch-client.version>8.17.0</elasticsearch-client.version>
     </properties>
 
     <dependencyManagement>
@@ -182,6 +194,16 @@
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-client</artifactId>
                 <version>${jetty-vespa.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>co.elastic.clients</groupId>
+                <artifactId>elasticsearch-java</artifactId>
+                <version>${elasticsearch-client.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.elasticsearch.client</groupId>
+                <artifactId>elasticsearch-rest-client</artifactId>
+                <version>${elasticsearch-client.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
